@@ -1,23 +1,10 @@
 <script lang="ts">
+  import { loggedInUser } from "$lib/runes.svelte";
+  import { donationService } from "$lib/services/donation-service";
+  import type { Donation } from "$lib/types/donation-types";
   import Coordinates from "$lib/ui/Coordinates.svelte";
 
-  const candidateList = [
-    {
-      firstName: "Lisa",
-      lastName: "Simpson",
-      office: "President"
-    },
-    {
-      firstName: "Maggie",
-      lastName: "Simpson",
-      office: "President"
-    },
-    {
-      firstName: "Ned",
-      lastName: "Flanders",
-      office: "President"
-    }
-  ];
+  let { candidateList = [] } = $props();
 
   let amount = $state(0);
   let lat = $state(52.160858);
@@ -25,10 +12,30 @@
   let selectedCandidate = $state("Simpson, Lisa");
   let paymentMethods = ["paypal", "direct"];
   let selectedMethod = $state("paypal");
+  let message = $state("Please Donate");
 
   async function donate() {
-    console.log(`Just donated: ${amount} to ${selectedCandidate} via ${selectedMethod} payment`);
-    console.log(`lat: ${lat}, lng: ${lng}`);
+    if (selectedCandidate && amount && selectedMethod) {
+      const candidate = candidateList.find((candidate) => candidate._id === selectedCandidate);
+      if (candidate) {
+        const donation: Donation = {
+          amount: amount,
+          method: selectedMethod,
+          candidate: selectedCandidate,
+          lat: lat,
+          lng: lng,
+          donor: loggedInUser._id
+        };
+        const success = await donationService.donate(donation, loggedInUser.token);
+        if (!success) {
+          message = "Donation not completed - some error occurred";
+          return;
+        }
+        message = `Thanks! You donated ${amount} to ${candidate.firstName} ${candidate.lastName}`;
+      }
+    } else {
+      message = "Please select amount, method and candidate";
+    }
   }
 </script>
 
@@ -50,7 +57,7 @@
     <div class="select">
       <select bind:value={selectedCandidate}>
         {#each candidateList as candidate}
-          <option>{candidate.lastName},{candidate.firstName}</option>
+          <option value={candidate._id}>{candidate.lastName},{candidate.firstName}</option>
         {/each}
       </select>
     </div>
@@ -62,3 +69,8 @@
   </div>
 </div>
 <Coordinates bind:lat bind:lng />
+<div class="box mt-4">
+  <div class="content has-text-centered">
+    {message}
+  </div>
+</div>
