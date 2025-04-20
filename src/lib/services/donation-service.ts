@@ -1,6 +1,7 @@
 import axios from "axios";
 import type { Session, User } from "$lib/types/donation-types";
 import type { Candidate, Donation } from "$lib/types/donation-types";
+import { loggedInUser } from "$lib/runes.svelte";
 
 export const donationService = {
   baseUrl: "http://localhost:4000",
@@ -17,16 +18,20 @@ export const donationService = {
 
   async login(email: string, password: string): Promise<Session | null> {
     try {
-      const response = await axios.post(`${this.baseUrl}/api/users/authenticate`, { email, password });
+      const response = await axios.post(`${this.baseUrl}/api/users/authenticate`, {
+        email,
+        password
+      });
       if (response.data.success) {
         axios.defaults.headers.common["Authorization"] = "Bearer " + response.data.token;
         const session: Session = {
           name: response.data.name,
           token: response.data.token,
-          _id: response.data.id
+          _id: response.data._id
         };
         return session;
       }
+
       return null;
     } catch (error) {
       console.log(error);
@@ -37,7 +42,11 @@ export const donationService = {
   async donate(donation: Donation, token: string) {
     try {
       axios.defaults.headers.common["Authorization"] = "Bearer " + token;
-      const response = await axios.post(this.baseUrl + "/api/candidates/" + donation.candidate + "/donations", donation);
+      const response = await axios.post(
+        this.baseUrl + "/api/candidates/" + donation.candidate + "/donations",
+        donation
+      );
+      await this.getDonations(loggedInUser.token);
       return response.status == 200;
     } catch (error) {
       console.log(error);
@@ -51,7 +60,7 @@ export const donationService = {
       const response = await axios.get(this.baseUrl + "/api/candidates");
       return response.data;
     } catch (error) {
-    console.log(error);
+      console.log(error);
       return [];
     }
   },
@@ -62,8 +71,8 @@ export const donationService = {
       const response = await axios.get(this.baseUrl + "/api/donations");
       return response.data;
     } catch (error) {
-    console.log(error)
+      console.log(error);
       return [];
     }
-  }  
+  }
 };
